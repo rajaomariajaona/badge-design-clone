@@ -14,7 +14,7 @@ body{
 .svg-container{
     height: 400px;
     width: 400px;
-    background-image: url('../images/transparent.png');
+    background-image: url('./transparent.png');
     background-size: cover;
     box-shadow: 0 2px 4px 0 rgb(0 0 0 / 16%);
 }
