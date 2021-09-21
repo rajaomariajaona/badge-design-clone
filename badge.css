@@ -1,0 +1,189 @@
+* {
+    box-sizing: border-box;
+}
+
+body{
+    background-color: #f8f8f8;
+    padding: 0;
+    margin: 0;
+}
+
+#svg-handler-container{
+    position: relative;
+}
+.svg-container{
+    height: 400px;
+    width: 400px;
+    background-image: url('../images/transparent.png');
+    background-size: cover;
+    box-shadow: 0 2px 4px 0 rgb(0 0 0 / 16%);
+}
+
+#element-container{
+    padding-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+div.element{
+    padding: 10px;
+    height: 80px;
+    width: 80px;
+    border-radius: 5px;
+}
+div.element:hover{
+    background-color: #4d6069;
+}
+
+#main-content{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+}
+
+
+#control-panel{
+    width: 300px;
+    height: 100vh;
+    background-color: #455a64;
+    z-index: 1;
+    box-shadow: 0 2px 4px 0 rgb(0 0 0 / 16%);
+    overflow-x:hidden;
+    overflow-y: auto;
+}
+#content{
+    display: flex;
+}
+
+#handler{
+    position: absolute;
+    pointer-events: none;
+    outline: 1px dashed rgba(0, 0, 0, 0.5);
+}
+
+#handler div[id^="handle-"]{
+    height: 14px;
+    width: 14px;
+    border-radius: 50%;
+    background-color: black;
+    border: 2px solid white;
+    position: absolute;
+    box-shadow: 0 0 3px rgb(35 35 47 / 16%);
+    margin: -7px;
+    pointer-events: all;
+}
+div#handle-tl{
+    top: 0;
+    left: 0;
+    cursor: nwse-resize;
+}
+div#handle-tr{
+    top: 0;
+    right: 0;
+    cursor: nesw-resize;
+}
+div#handle-br{
+    bottom: 0;
+    right: 0;
+    cursor: nwse-resize;
+}
+div#handle-bl{
+    bottom: 0;
+    left: 0;
+    cursor: nesw-resize;
+}
+div#handle-ct{
+    top: 50%;
+    left: 50%;
+    pointer-events: none!important;
+}
+
+div#header-control{
+    height: 50px;
+    width: 100%;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 10%);
+    display: flex;
+    justify-content: space-between;
+    background-color: white;
+}
+div#main{
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    height: 100vh;
+}
+button.btn-navigation{
+    width: 35px;
+    height: 35px;
+}
+
+div#container-button-navigation{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-right: 10px;
+}
+.mx-5px{
+    margin-left: 5px!important;
+    margin-right: 5px!important;
+}
+#handler-other-controller{
+    position: absolute;
+    bottom: calc(100% + 5px);
+    right: 0px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    pointer-events: all;
+}
+#handler-other-controller > div{
+    border-radius: 50%;
+    background-color: #fafafa;
+    width: 30px;
+    height: 30px;
+    text-align: center;
+    box-shadow: 1px 2px 3px 2px rgb(0 0 0 / 10%);
+}
+#handler-other-controller > div > i{
+    vertical-align: bottom;
+}
+
+#attributes{
+    display: flex;
+    align-items: center;
+}
+#attributes > div{
+    padding: 5px;
+}
+
+.sp-replacer{
+    height: 30px!important;
+    width: 30px!important;
+}
+.sp-dd{
+    display: none;
+}
+#opacity-container > div{
+    display: flex;
+    width: 100%;
+    height: 100%;
+    justify-content: space-between;
+    align-items: center;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+#opacity-container{
+    height: 30px;
+    width: 250px;
+}
+#btn-opacity{
+    height: 30px!important;
+    width: 30px!important;
+    padding: 0;
+    cursor: pointer;
+    display: inline-block;
+    border-radius: 3px;
+    border: 1px solid #aaa;
+}
