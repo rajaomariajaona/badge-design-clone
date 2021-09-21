@@ -46,6 +46,7 @@ class SvgUtils {
 
     static getMousePosition(event) {
         var CTM = Artboard.getInstance().artboard.getScreenCTM();
+        event = event instanceof TouchEvent ? event.touches[0] : event;
         return {
           x: (event.clientX - CTM.e) / CTM.a,
           y: (event.clientY - CTM.f) / CTM.d
@@ -219,11 +220,16 @@ class DragCommand extends Command {
     }
     static attachDragEvent(element){
         element.removeEventListener("mousedown", DragCommand.dragStart);
+        element.removeEventListener("touchstart", DragCommand.dragStart);
         element.removeEventListener("mouseup", DragCommand.dragEnd);
+        element.removeEventListener("touchend", DragCommand.dragEnd);
         element.addEventListener("mousedown", DragCommand.dragStart);
+        element.addEventListener("touchstart", DragCommand.dragStart);
         element.addEventListener("mouseup", DragCommand.dragEnd);
+        element.addEventListener("touchend", DragCommand.dragEnd);
     }
     static dragStart(event) {
+        if(event.touches.length > 1) return;
         event.preventDefault();
         event.stopPropagation();
         const target = event.currentTarget;
@@ -239,14 +245,19 @@ class DragCommand extends Command {
         CurrentElement.offset.x -= x;
         CurrentElement.offset.y -= y;
         document.addEventListener("mouseup", DragCommand.dragEnd);
+        document.addEventListener("touchend", DragCommand.dragEnd);
         document.addEventListener("mousemove", DragCommand.drag);
+        document.addEventListener("touchmove", DragCommand.drag);
     }
     
     static dragEnd(event) {
+        if(event.touches.length > 1) return;
         event.preventDefault();
         event.stopPropagation();
         document.removeEventListener("mouseup", DragCommand.dragEnd);
+        document.removeEventListener("touchend", DragCommand.dragEnd);
         document.removeEventListener("mousemove", DragCommand.drag);
+        document.removeEventListener("touchmove", DragCommand.drag);
         if(CurrentElement.isDragging){
             CurrentElement.isDragging = false;
             const {x,y} = SvgUtils.getRectOfElement(CurrentElement.selectedElement).toObject();
@@ -255,13 +266,14 @@ class DragCommand extends Command {
         }
     }
     static drag(event){
+        if(event.touches.length > 1) return;
         if(!CurrentElement.isDragging){
             console.log("DRAGSTART");
             CurrentElement.isDragging = true;
         }
         if(CurrentElement.isDragging){
-            event.preventDefault();
-            event.stopPropagation();
+            // event.preventDefault();
+            // event.stopPropagation();
             var coord = SvgUtils.getMousePosition(event);
             SvgUtils.setPoint(CurrentElement.selectedElement, new Point(coord.x - CurrentElement.offset.x, coord.y - CurrentElement.offset.y));
         }
@@ -581,18 +593,22 @@ class Handler{
         return this._instance;
     }
     _init(){
-        const mouseupEventHandleTL = (event) => {  Artboard.getInstance().stackControl.do(new ResizeCommand(CurrentElement.selectedElement, this._startRect, SvgUtils.getRectOfElement(CurrentElement.selectedElement))); document.removeEventListener('mouseup', mouseupEventHandleTL);  Artboard.getInstance().artboard.removeEventListener('mousemove', Handler.getInstance().scaleTL);}
-        const mouseupEventHandleTR = (event) => {  Artboard.getInstance().stackControl.do(new ResizeCommand(CurrentElement.selectedElement, this._startRect, SvgUtils.getRectOfElement(CurrentElement.selectedElement))); document.removeEventListener('mouseup', mouseupEventHandleTR);  Artboard.getInstance().artboard.removeEventListener('mousemove', Handler.getInstance().scaleTR);}
-        const mouseupEventHandleBR = (event) => {  Artboard.getInstance().stackControl.do(new ResizeCommand(CurrentElement.selectedElement, this._startRect, SvgUtils.getRectOfElement(CurrentElement.selectedElement))); document.removeEventListener('mouseup', mouseupEventHandleBR);  Artboard.getInstance().artboard.removeEventListener('mousemove', Handler.getInstance().scaleBR);}
-        const mouseupEventHandleBL = (event) => {  Artboard.getInstance().stackControl.do(new ResizeCommand(CurrentElement.selectedElement, this._startRect, SvgUtils.getRectOfElement(CurrentElement.selectedElement))); document.removeEventListener('mouseup', mouseupEventHandleBL);  Artboard.getInstance().artboard.removeEventListener('mousemove', Handler.getInstance().scaleBL);}
-        const mousedownEventHandleTL = (event) => { if(!CurrentElement.selectedElement) return; this._startRect = SvgUtils.getRectOfElement(CurrentElement.selectedElement); document.addEventListener('mouseup', mouseupEventHandleTL); Artboard.getInstance().artboard.addEventListener('mousemove', Handler.getInstance().scaleTL);}
-        const mousedownEventHandleTR = (event) => { if(!CurrentElement.selectedElement) return; this._startRect = SvgUtils.getRectOfElement(CurrentElement.selectedElement); document.addEventListener('mouseup', mouseupEventHandleTR); Artboard.getInstance().artboard.addEventListener('mousemove', Handler.getInstance().scaleTR);}
-        const mousedownEventHandleBR = (event) => { if(!CurrentElement.selectedElement) return; this._startRect = SvgUtils.getRectOfElement(CurrentElement.selectedElement); document.addEventListener('mouseup', mouseupEventHandleBR); Artboard.getInstance().artboard.addEventListener('mousemove', Handler.getInstance().scaleBR);}
-        const mousedownEventHandleBL = (event) => { if(!CurrentElement.selectedElement) return; this._startRect = SvgUtils.getRectOfElement(CurrentElement.selectedElement); document.addEventListener('mouseup', mouseupEventHandleBL); Artboard.getInstance().artboard.addEventListener('mousemove', Handler.getInstance().scaleBL);}
+        const mouseupEventHandleTL = (event) => {  Artboard.getInstance().stackControl.do(new ResizeCommand(CurrentElement.selectedElement, this._startRect, SvgUtils.getRectOfElement(CurrentElement.selectedElement))); if(event instanceof MouseEvent) document.removeEventListener('mouseup', mouseupEventHandleTL); if(event instanceof TouchEvent) document.removeEventListener('touchend', mouseupEventHandleTL); if(event instanceof MouseEvent) Artboard.getInstance().artboard.removeEventListener('mousemove', Handler.getInstance().scaleTL); if(event instanceof TouchEvent) Artboard.getInstance().artboard.removeEventListener('touchmove', Handler.getInstance().scaleTL);}
+        const mouseupEventHandleTR = (event) => {  Artboard.getInstance().stackControl.do(new ResizeCommand(CurrentElement.selectedElement, this._startRect, SvgUtils.getRectOfElement(CurrentElement.selectedElement))); if(event instanceof MouseEvent) document.removeEventListener('mouseup', mouseupEventHandleTR); if(event instanceof TouchEvent) document.removeEventListener('touchend', mouseupEventHandleTR); if(event instanceof MouseEvent) Artboard.getInstance().artboard.removeEventListener('mousemove', Handler.getInstance().scaleTR); if(event instanceof TouchEvent) Artboard.getInstance().artboard.removeEventListener('touchmove', Handler.getInstance().scaleTR);}
+        const mouseupEventHandleBR = (event) => {  Artboard.getInstance().stackControl.do(new ResizeCommand(CurrentElement.selectedElement, this._startRect, SvgUtils.getRectOfElement(CurrentElement.selectedElement))); if(event instanceof MouseEvent) document.removeEventListener('mouseup', mouseupEventHandleBR); if(event instanceof TouchEvent) document.removeEventListener('touchend', mouseupEventHandleBR); if(event instanceof MouseEvent) Artboard.getInstance().artboard.removeEventListener('mousemove', Handler.getInstance().scaleBR); if(event instanceof TouchEvent) Artboard.getInstance().artboard.removeEventListener('touchmove', Handler.getInstance().scaleBR);}
+        const mouseupEventHandleBL = (event) => {  Artboard.getInstance().stackControl.do(new ResizeCommand(CurrentElement.selectedElement, this._startRect, SvgUtils.getRectOfElement(CurrentElement.selectedElement))); if(event instanceof MouseEvent) document.removeEventListener('mouseup', mouseupEventHandleBL); if(event instanceof TouchEvent) document.removeEventListener('touchend', mouseupEventHandleBL); if(event instanceof MouseEvent) Artboard.getInstance().artboard.removeEventListener('mousemove', Handler.getInstance().scaleBL); if(event instanceof TouchEvent) Artboard.getInstance().artboard.removeEventListener('touchmove', Handler.getInstance().scaleBL);}
+        const mousedownEventHandleTL = (event) => { if(!CurrentElement.selectedElement) return; this._startRect = SvgUtils.getRectOfElement(CurrentElement.selectedElement); if(event instanceof MouseEvent) document.addEventListener('mouseup', mouseupEventHandleTL); if(event instanceof TouchEvent) document.addEventListener('touchend', mouseupEventHandleTL); if(event instanceof MouseEvent) Artboard.getInstance().artboard.addEventListener('mousemove', Handler.getInstance().scaleTL); if(event instanceof TouchEvent) Artboard.getInstance().artboard.addEventListener('touchmove', Handler.getInstance().scaleTL);}
+        const mousedownEventHandleTR = (event) => { if(!CurrentElement.selectedElement) return; this._startRect = SvgUtils.getRectOfElement(CurrentElement.selectedElement); if(event instanceof MouseEvent) document.addEventListener('mouseup', mouseupEventHandleTR); if(event instanceof TouchEvent) document.addEventListener('touchend', mouseupEventHandleTR); if(event instanceof MouseEvent) Artboard.getInstance().artboard.addEventListener('mousemove', Handler.getInstance().scaleTR); if(event instanceof TouchEvent) Artboard.getInstance().artboard.addEventListener('touchmove', Handler.getInstance().scaleTR);}
+        const mousedownEventHandleBR = (event) => { if(!CurrentElement.selectedElement) return; this._startRect = SvgUtils.getRectOfElement(CurrentElement.selectedElement); if(event instanceof MouseEvent) document.addEventListener('mouseup', mouseupEventHandleBR); if(event instanceof TouchEvent) document.addEventListener('touchend', mouseupEventHandleBR); if(event instanceof MouseEvent) Artboard.getInstance().artboard.addEventListener('mousemove', Handler.getInstance().scaleBR); if(event instanceof TouchEvent) Artboard.getInstance().artboard.addEventListener('touchmove', Handler.getInstance().scaleBR);}
+        const mousedownEventHandleBL = (event) => { if(!CurrentElement.selectedElement) return; this._startRect = SvgUtils.getRectOfElement(CurrentElement.selectedElement); if(event instanceof MouseEvent) document.addEventListener('mouseup', mouseupEventHandleBL); if(event instanceof TouchEvent) document.addEventListener('touchend', mouseupEventHandleBL); if(event instanceof MouseEvent) Artboard.getInstance().artboard.addEventListener('mousemove', Handler.getInstance().scaleBL); if(event instanceof TouchEvent) Artboard.getInstance().artboard.addEventListener('touchmove', Handler.getInstance().scaleBL);}
         this._handleTL.addEventListener('mousedown', mousedownEventHandleTL);
         this._handleTR.addEventListener('mousedown', mousedownEventHandleTR);
         this._handleBR.addEventListener('mousedown', mousedownEventHandleBR);
         this._handleBL.addEventListener('mousedown', mousedownEventHandleBL);
+        this._handleTL.addEventListener('touchstart', mousedownEventHandleTL);
+        this._handleTR.addEventListener('touchstart', mousedownEventHandleTR);
+        this._handleBR.addEventListener('touchstart', mousedownEventHandleBR);
+        this._handleBL.addEventListener('touchstart', mousedownEventHandleBL);
         document.querySelector("#btn-up").addEventListener('click',  (event) => {
             Artboard.getInstance().stackControl.do(new LayerCommand(CurrentElement.selectedElement, 'up'));
         })
@@ -624,6 +640,7 @@ class Handler{
     }
 
     scaleBR(event){
+        console.log("ATO");
         if(CurrentElement.selectedElement){
             event.preventDefault();
             event.stopPropagation();
