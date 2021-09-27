@@ -84,6 +84,31 @@ class SvgUtils {
             a.click();
         };
     }
+    static copyIntoClipboard(){
+        var svg = Artboard.getInstance().artboard;
+        var svgData = new XMLSerializer().serializeToString( svg );
+
+        var canvas = document.createElement( "canvas" );
+        var svgSize = svg.getBoundingClientRect();
+        canvas.width = svgSize.width;
+        canvas.height = svgSize.height;
+        var ctx = canvas.getContext( "2d" );
+
+        var img = document.createElement( "img" );
+        img.setAttribute( "src", "data:image/svg+xml;base64," + btoa( svgData ) );
+        img.onload = function() {
+            ctx.drawImage( img, 0, 0 );
+            canvas.toBlob(async blob => {
+                var res = null;
+                if (navigator.userAgent.indexOf("Firefox") > -1) {
+                    res = browser.clipboard.setImageData(await blob.arrayBuffer(), "png");
+                }else{
+                    res = navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
+                }
+                await res.then(_ => console.log("COPIED"));
+            });
+        };
+    }
 }
 
 window.SvgUtils = SvgUtils;
@@ -229,7 +254,7 @@ class DragCommand extends Command {
         element.addEventListener("touchend", DragCommand.dragEnd);
     }
     static dragStart(event) {
-        if(event.touches.length > 1) return;
+        if(event.touches && event.touches.length > 1) return;
         event.preventDefault();
         event.stopPropagation();
         const target = event.currentTarget;
@@ -251,7 +276,7 @@ class DragCommand extends Command {
     }
     
     static dragEnd(event) {
-        if(event.touches.length > 1) return;
+        if(event.touches && event.touches.length > 1) return;
         event.preventDefault();
         event.stopPropagation();
         document.removeEventListener("mouseup", DragCommand.dragEnd);
@@ -266,7 +291,7 @@ class DragCommand extends Command {
         }
     }
     static drag(event){
-        if(event.touches.length > 1) return;
+        if(event.touches && event.touches.length > 1) return;
         if(!CurrentElement.isDragging){
             console.log("DRAGSTART");
             CurrentElement.isDragging = true;
