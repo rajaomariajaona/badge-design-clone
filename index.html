@@ -61,8 +61,8 @@
                     <ul id="contextMenu" class="dropdown-menu" role="menu" style="display:none;" >
                         <li><input id="fileUpload" type="file" accept="image/*" style="display: none;"><a tabindex="-1" href="#" id="btn-import-image">Importer une image</a></li>
                         <li><a id="btn-copy-image" tabindex="-1" href="#">Copier l'image</a></li>
+                        <li><a id="btn-insert-text" tabindex="-1" href="#">Inserer texte</a></li>
                         <li class="divider"></li>
-                        <li><a tabindex="-1" href="#">TO CHANGE</a></li>
                         <li><a tabindex="-1" href="#">TO CHANGE</a></li>
                     </ul>
                 </div>
@@ -210,6 +210,11 @@
             e.preventDefault();
             document.querySelector("#contextMenu").style.display = "none";
             SvgUtils.copyIntoClipboard();
+        })
+        document.querySelector("#btn-insert-text").addEventListener('click', (e) => {
+            e.preventDefault();
+            document.querySelector("#contextMenu").style.display = "none";
+            Artboard.getInstance().stackControl.do(new InsertTextCommand());
         })
     </script>
     

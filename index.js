@@ -2,12 +2,19 @@
 
 
 class SvgUtils {
+    static NS = 'http://www.w3.org/2000/svg';
     static setPoint(element, point, fire = true){
         element.setAttribute('x', point.x)
         element.setAttribute('y', point.y)
         if(fire){
-            Handler.getInstance().dispatchHandler(element);
+            SvgUtils.dispatchEventHandler(element);
         }
+    }
+    static dispatchEventHandler(element){
+        while(!(element instanceof SVGSVGElement)){
+            element = element.parentNode;
+        }
+        Handler.getInstance().dispatchHandler(element);
     }
     static setRect(element, x,y,width,height){
         SvgUtils.setRectViaRectangle(element, Rectangle.fromXY(x,y,width,height));
@@ -16,9 +23,12 @@ class SvgUtils {
         SvgUtils.setPoint(element, rect.point, false);
         element.setAttribute('width', rect.width);
         element.setAttribute('height', rect.height);
-        Handler.getInstance().dispatchHandler(element);
+        SvgUtils.dispatchEventHandler(element);
     }
     static getRectOfElement(element){
+        if(element.getAttribute('is-text') == 'true'){
+            element = element.querySelector('foreignObject');
+        }
         var x = element.getAttribute('x');
         x = x ? parseFloat(x) : 0;
         var y = element.getAttribute('y');
@@ -39,7 +49,7 @@ class SvgUtils {
             change = true;
         }
         if(change){
-            Handler.getInstance().dispatchHandler(element);
+            SvgUtils.dispatchEventHandler(element)
         }
         return Rectangle.fromXY(x,y,width, height);
     }
@@ -193,8 +203,8 @@ class Rectangle{
     static fromPoint(point, width, height){
         var rect = new Rectangle();
         rect.point = point;
-        rect.width = width;
-        rect.height = height;
+        rect.width = width > 0 ? width : 1;
+        rect.height = height > 0 ? height : 1;
         return rect;
     }
     static fromXY(x,y,width, height){
@@ -232,6 +242,9 @@ class DragCommand extends Command {
         this._start = start;
         this._target = target;
         this._element = element;
+        if(element.getAttribute('is-text') == 'true'){
+            this._element = element.querySelector('foreignObject');
+        }
     }
     execute(){
         if(this._element && this._element instanceof SVGElement && this._target){
@@ -244,6 +257,9 @@ class DragCommand extends Command {
         }
     }
     static attachDragEvent(element){
+        if(element.getAttribute('is-text') == 'true'){
+            element = element.querySelector('foreignObject');
+        }
         element.removeEventListener("mousedown", DragCommand.dragStart);
         element.removeEventListener("touchstart", DragCommand.dragStart);
         element.removeEventListener("mouseup", DragCommand.dragEnd);
@@ -257,7 +273,7 @@ class DragCommand extends Command {
         if(event.touches && event.touches.length > 1) return;
         event.preventDefault();
         event.stopPropagation();
-        const target = event.currentTarget;
+        var target = event.currentTarget;
         CurrentElement.selectedElement = target;
         var x = target.getAttribute('x');
         x = x ? parseFloat(x) : 0;
@@ -285,8 +301,12 @@ class DragCommand extends Command {
         document.removeEventListener("touchmove", DragCommand.drag);
         if(CurrentElement.isDragging){
             CurrentElement.isDragging = false;
-            const {x,y} = SvgUtils.getRectOfElement(CurrentElement.selectedElement).toObject();
-            Artboard.getInstance().stackControl.do(new DragCommand(CurrentElement.selectedElement, startDragPoint, new Point(x,y)));
+            var element = CurrentElement.selectedElement;
+            if(element.getAttribute('is-text') == 'true'){
+                element = element.querySelector('foreignObject');
+            }
+            const {x,y} = SvgUtils.getRectOfElement(element).toObject();
+            Artboard.getInstance().stackControl.do(new DragCommand(element, startDragPoint, new Point(x,y)));
             console.log("DRAGEND");
         }
     }
@@ -297,10 +317,12 @@ class DragCommand extends Command {
             CurrentElement.isDragging = true;
         }
         if(CurrentElement.isDragging){
-            // event.preventDefault();
-            // event.stopPropagation();
+            var element = CurrentElement.selectedElement;
+            if(element.getAttribute('is-text') == 'true'){
+                element = element.querySelector('foreignObject');
+            }
             var coord = SvgUtils.getMousePosition(event);
-            SvgUtils.setPoint(CurrentElement.selectedElement, new Point(coord.x - CurrentElement.offset.x, coord.y - CurrentElement.offset.y));
+            SvgUtils.setPoint(element, new Point(coord.x - CurrentElement.offset.x, coord.y - CurrentElement.offset.y));
         }
     }
 }
@@ -434,6 +456,9 @@ class ResizeCommand extends Command{
     constructor(element, startRect, targetRect){
         super();
         this._element = element;
+        if(element.getAttribute('is-text') == 'true'){
+            this._element = element.querySelector('foreignObject');
+        }
         this._startRect = startRect;
         this._targetRect = targetRect;
     }
@@ -448,9 +473,9 @@ window.ResizeCommand = ResizeCommand;
 
 class ImportationCommand extends Command {
     _element = null;
-    constructor(element){
+    constructor(element, clone = true){
         super();
-        this._element = element.cloneNode(true);
+        this._element = clone ? element.cloneNode(true) : element;
         this._element.setAttribute("class", "element");
     }
     execute(){
@@ -463,79 +488,69 @@ class ImportationCommand extends Command {
 
 }
 window.ImportationCommand = ImportationCommand;
-class CurrentElement{
-    static _selectedElement;
-    static _isDragging;
-    static _offset;
-    static get selectedElement() {
-        return this._selectedElement;
+
+class InsertTextCommand extends ImportationCommand{
+    constructor(){
+        super(InsertTextCommand.createTextElement(), false);
     }
-    static set selectedElement(_selectedElement) {
-        const attributes = document.querySelector("#attributes");
-        attributes.innerHTML = "";
-        if(this._selectedElement){
-            this._selectedElement.removeEventListener('handler', Handler.getInstance().put);
-            this._selectedElement.classList.remove("selected");
-        }
-        this._selectedElement = _selectedElement;
-        if(this._selectedElement){
-            CustomElement.init(this._selectedElement, true);
-            this._selectedElement.classList.add("selected");
-            new OpacityController("#attributes");
-            var count = this._selectedElement.getAttribute("data-colors-count");
-            count = Number(count);
-            for(var i = 0; i < count; i++){
-                new ColorController("#attributes", i, this._selectedElement.querySelector(`*[fill-id="${i}"`).getAttribute("fill"));
-            }
-        }else{
-            Handler.getInstance().hide();
-        }
+    static createTextElement(){
+        const svg = document.createElementNS(SvgUtils.NS, 'svg');
+        svg.setAttribute('is-text', 'true');
+        svg.setAttribute('viewBox', '0 0 400 400');
+        const foreign = document.createElementNS(SvgUtils.NS, 'foreignObject');
+        foreign.setAttribute('height', 50);
+        foreign.setAttribute('width', 300);
+        foreign.setAttribute('fill', 'black');
+        
+        svg.appendChild(foreign);
+        const div = document.createElement('div');
+        div.style.height = '100%';
+        div.style.width = '100%';
+        div.style["display"] = "table";
+        div.style["text-align"] = "center";
+
+        foreign.appendChild(div);
+
+        const divChild = document.createElement('div');
+        divChild.style.height = '100%';
+        divChild.style.width = '100%';
+        divChild.style["display"] = "table-cell";
+        divChild.style["vertical-align"] = " middle";
+        divChild.innerHTML = "Changer ce texte";
+        
+        div.appendChild(divChild);
+
+
+        foreign.addEventListener('dblclick', (e) => {
+            div.addEventListener('mousedown', InsertTextCommand.stopPropagation);
+            divChild.setAttribute('contenteditable', true)
+            divChild.focus();
+        });
+        divChild.addEventListener('blur', () => {
+            div.removeEventListener('mousedown', InsertTextCommand.stopPropagation);
+            divChild.removeAttribute('contenteditable');
+        })
+
+        var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type == "attributes") {
+                    if(mutation.attributeName == "fill"){
+                        divChild.style.color = foreign.getAttribute("fill");
+                    }
+                }
+            });
+            });
+        observer.observe(foreign, {
+            attributes: true
+        });
+        return svg;
     }
-    static get isDragging () {
-        return this._isDragging;
+    static stopPropagation(e){
+        e.stopPropagation();
     }
-    static set isDragging (_isDragging) {
-        this._isDragging = _isDragging;
-    }
-    static get offset () {
-        return this._offset;
-    }
-    static set offset (_offset) {
-        this._offset = _offset;
-    }
+
 }
-
-window.CurrentElement = CurrentElement;
-
-class CustomElement{
-    static init(element, selectioned = false){
-        element.addEventListener('handler', Handler.getInstance().put);
-        DragCommand.attachDragEvent(element);
-        CustomElement._addFillAttributes(element);
-        if(selectioned){
-            Handler.getInstance().dispatchHandler(element);
-        }
-    }
-    static _addFillAttributes(element){
-        var existingColors = new Set();
-        const fillables = element.querySelectorAll("*[fill]");
-        for(const fillable of fillables){
-            const color = fillable.getAttribute("fill");
-            existingColors.add(color);
-        }
-        const tabExistingColors = Array.from(existingColors);
-        element.setAttribute("data-colors-count", tabExistingColors.length);
-        for(var i = 0; i < tabExistingColors.length; i++){
-            const color = tabExistingColors[i];
-            const currentColored = element.querySelectorAll("*[fill='" + color + "']");
-            for(const current of currentColored){
-                current.setAttribute("fill-id", "" + i);
-            }
-        }
-    }
-}
-
-window.CustomElement = CustomElement;
+window.InsertTextCommand = InsertTextCommand;
 
 class ChangeAttributesCommand extends Command{
     _oldValue;
@@ -595,6 +610,83 @@ class ChangeAttributesCommand extends Command{
 }
 
 window.ChangeAttributesCommand = ChangeAttributesCommand;
+
+class CurrentElement{
+    static _selectedElement;
+    static _isDragging;
+    static _offset;
+    static get selectedElement() {
+        return this._selectedElement;
+    }
+    static set selectedElement(_selectedElement) {
+        const attributes = document.querySelector("#attributes");
+        attributes.innerHTML = "";
+        if(this._selectedElement){
+            this._selectedElement.removeEventListener('handler', Handler.getInstance().put);
+            this._selectedElement.classList.remove("selected");
+        }
+        this._selectedElement = _selectedElement;
+        if(this._selectedElement){
+            while(!(this._selectedElement instanceof SVGSVGElement)){
+                this._selectedElement = this._selectedElement.parentNode;
+            }
+            CustomElement.init(this._selectedElement, true);
+            this._selectedElement.classList.add("selected");
+            new OpacityController("#attributes");
+            var count = this._selectedElement.getAttribute("data-colors-count");
+            count = Number(count);
+            for(var i = 0; i < count; i++){
+                new ColorController("#attributes", i, this._selectedElement.querySelector(`*[fill-id="${i}"`).getAttribute("fill"));
+            }
+        }else{
+            Handler.getInstance().hide();
+        }
+    }
+    static get isDragging () {
+        return this._isDragging;
+    }
+    static set isDragging (_isDragging) {
+        this._isDragging = _isDragging;
+    }
+    static get offset () {
+        return this._offset;
+    }
+    static set offset (_offset) {
+        this._offset = _offset;
+    }
+}
+
+window.CurrentElement = CurrentElement;
+
+class CustomElement{
+    static init(element, selectioned = false){
+        element.addEventListener('handler', Handler.getInstance().put);
+        DragCommand.attachDragEvent(element);
+        CustomElement._addFillAttributes(element);
+        if(selectioned){
+            Handler.getInstance().dispatchHandler(element);
+        }
+    }
+    static _addFillAttributes(element){
+        var existingColors = new Set();
+        const fillables = element.querySelectorAll("*[fill]");
+        for(const fillable of fillables){
+            const color = fillable.getAttribute("fill");
+            existingColors.add(color);
+        }
+        const tabExistingColors = Array.from(existingColors);
+        element.setAttribute("data-colors-count", tabExistingColors.length);
+        for(var i = 0; i < tabExistingColors.length; i++){
+            const color = tabExistingColors[i];
+            const currentColored = element.querySelectorAll("*[fill='" + color + "']");
+            for(const current of currentColored){
+                current.setAttribute("fill-id", "" + i);
+            }
+        }
+    }
+}
+
+window.CustomElement = CustomElement;
 class Handler{
     _instance = null;
     _handler = null;
@@ -665,22 +757,30 @@ class Handler{
     }
 
     scaleBR(event){
-        console.log("ATO");
-        if(CurrentElement.selectedElement){
+        var element = CurrentElement.selectedElement;
+        if(element.getAttribute('is-text') == 'true'){
+            element = element.querySelector('foreignObject');
+        }
+        if(element){
             event.preventDefault();
             event.stopPropagation();
-            var {x,y,width, height} = SvgUtils.getRectOfElement(CurrentElement.selectedElement).toObject();
+            var {x,y,width, height} = SvgUtils.getRectOfElement(element).toObject();
             var positionMouse = SvgUtils.getMousePosition(event);
             width = positionMouse.x - Number(x);
             height = positionMouse.y - Number(y);
-            SvgUtils.setRect(CurrentElement.selectedElement, x,y,width,height);
+            if(width > 0 && height > 0)
+                SvgUtils.setRect(element, x,y,width,height);
         }
     }
     scaleTL(event){
-        if(CurrentElement.selectedElement){
+        var element = CurrentElement.selectedElement;
+        if(element.getAttribute('is-text') == 'true'){
+            element = element.querySelector('foreignObject');
+        }
+        if(element){
             event.preventDefault();
             event.stopPropagation();
-            var {x,y,width, height} = SvgUtils.getRectOfElement(CurrentElement.selectedElement).toObject();
+            var {x,y,width, height} = SvgUtils.getRectOfElement(element).toObject();
             var oldX = x;
             var oldY = y;
             var positionMouse = SvgUtils.getMousePosition(event);
@@ -688,33 +788,44 @@ class Handler{
             y = positionMouse.y;
             width += oldX - x;
             height += oldY - y;
-            SvgUtils.setRect(CurrentElement.selectedElement, x,y,width,height);
+            if(width > 0 && height > 0)
+                SvgUtils.setRect(element, x,y,width,height);
         }
     }
     scaleTR(event){
-        if(CurrentElement.selectedElement){
+        var element = CurrentElement.selectedElement;
+        if(element.getAttribute('is-text') == 'true'){
+            element = element.querySelector('foreignObject');
+        }
+        if(element){
             event.preventDefault();
             event.stopPropagation();
-            var {x,y,width, height} = SvgUtils.getRectOfElement(CurrentElement.selectedElement).toObject();
+            var {x,y,width, height} = SvgUtils.getRectOfElement(element).toObject();
             var oldY = y;
             var positionMouse = SvgUtils.getMousePosition(event);
             y = positionMouse.y;
             width = positionMouse.x - Number(x);
             height += oldY - y;
-            SvgUtils.setRect(CurrentElement.selectedElement, x,y,width,height);
+            if(width > 0 && height > 0)
+                SvgUtils.setRect(element, x,y,width,height);
         }
     }
     scaleBL(event){
-        if(CurrentElement.selectedElement){
+        var element = CurrentElement.selectedElement;
+        if(element.getAttribute('is-text') == 'true'){
+            element = element.querySelector('foreignObject');
+        }
+        if(element){
             event.preventDefault();
             event.stopPropagation();
-            var {x,y,width, height} = SvgUtils.getRectOfElement(CurrentElement.selectedElement).toObject();
+            var {x,y,width, height} = SvgUtils.getRectOfElement(element).toObject();
             var oldX = x;
             var positionMouse = SvgUtils.getMousePosition(event);
             x = positionMouse.x;
             height = positionMouse.y - Number(y);
             width += oldX - x;
-            SvgUtils.setRect(CurrentElement.selectedElement, x,y,width,height);
+            if(height > 0 && width > 0)
+                SvgUtils.setRect(element, x,y,width,height);
         }
     }
 
@@ -886,3 +997,8 @@ class ColorController{
 }
 
 window.ColorController = ColorController;
+
+class TextController{ 
+    
+}
+window.TextController = TextController;
